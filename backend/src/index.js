@@ -56,26 +56,20 @@ io.on('connection', (socket) => {
   });
 });
 
-// ============ PLACEHOLDER ROUTES (Will implement properly in Days 5-7) ============
+// ============ ROUTES ============
 
-app.post('/api/auth/signup', (req, res) => {
-  res.json({ message: 'Signup route - coming soon' });
-});
+const authRoutes = require('./routes/auth');
 
-app.post('/api/auth/login', (req, res) => {
-  res.json({ message: 'Login route - coming soon' });
-});
+app.use('/api/auth', authRoutes);
 
-app.post('/api/documents', (req, res) => {
-  res.json({ message: 'Upload document - coming soon' });
-});
+// Protected routes example
+const authMiddleware = require('./middleware/auth');
 
-app.post('/api/jobs', (req, res) => {
-  res.json({ message: 'Create job - coming soon' });
-});
-
-app.get('/api/jobs/:jobId', (req, res) => {
-  res.json({ message: 'Get job status - coming soon' });
+app.get('/api/protected', authMiddleware, (req, res) => {
+  res.json({ 
+    message: 'This is a protected route',
+    userId: req.userId,
+  });
 });
 
 // ============ ERROR HANDLING ============
