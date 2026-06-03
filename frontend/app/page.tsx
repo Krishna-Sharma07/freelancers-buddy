@@ -31,7 +31,7 @@ export default function Home() {
       <nav className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/30">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-center items-center">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Freelancer's Buddy
+            Lance Buddy
           </h1>
         </div>
       </nav>
