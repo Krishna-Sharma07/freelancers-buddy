@@ -44,11 +44,11 @@ export default function Home() {
           </div>
           
           <h2 className="text-6xl md:text-7xl font-bold leading-tight">
-            Stop Signing <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Bad Contracts</span>
+            You're Losing <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">₹50,000+</span> to Bad Contracts
           </h2>
           
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            AI-powered contract protection for freelancers. Catch risky clauses in 60 seconds. Score proposals before you send. Generate documents instantly.
+          <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            "Unlimited revisions" clause eats 10+ hours. Vague payment terms delay payment 60 days. Liability clause puts ₹1,00,000+ at risk. Lance Buddy catches these in 60 seconds before you sign.
           </p>
         </div>
 
@@ -93,33 +93,33 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="p-6 bg-slate-800/50 border border-slate-700/30 rounded-lg hover:border-red-500/30 transition">
               <p className="text-lg text-slate-300">
-                <span className="text-red-400 font-bold">❌ Vague payment terms</span>
+                <span className="text-red-400 font-bold">❌ "Payment upon completion"</span>
                 <br />
-                "Payment upon completion" - But when exactly? 30 days? 90 days?
+                You finish work. Client pays 60-90 days later. Your rent is due now. ₹1,644+ lost in cash flow.
               </p>
             </div>
             
             <div className="p-6 bg-slate-800/50 border border-slate-700/30 rounded-lg hover:border-red-500/30 transition">
               <p className="text-lg text-slate-300">
-                <span className="text-red-400 font-bold">❌ Unlimited liability</span>
+                <span className="text-red-400 font-bold">❌ "Unlimited liability"</span>
                 <br />
-                One mistake = you pay unlimited damages. Hundreds of thousands at risk.
+                One bug in your code = you pay all damages. A client sued a freelancer for ₹50,000 over a typo.
               </p>
             </div>
             
             <div className="p-6 bg-slate-800/50 border border-slate-700/30 rounded-lg hover:border-red-500/30 transition">
               <p className="text-lg text-slate-300">
-                <span className="text-red-400 font-bold">❌ Scope creep</span>
+                <span className="text-red-400 font-bold">❌ "Unlimited revisions"</span>
                 <br />
-                "Unlimited revisions" clause = endless unpaid work. ₹50,000+ lost easily.
+                "One more small change." 50 revisions later, you've worked 40 unpaid hours. ₹50,000+ down the drain.
               </p>
             </div>
             
             <div className="p-6 bg-slate-800/50 border border-slate-700/30 rounded-lg hover:border-red-500/30 transition">
               <p className="text-lg text-slate-300">
-                <span className="text-red-400 font-bold">❌ Weak proposals</span>
+                <span className="text-red-400 font-bold">❌ No proposal strategy</span>
                 <br />
-                Send proposals without knowing win probability. Lose deals constantly.
+                Send 20 proposals. Win 1. Competitors send smarter proposals. They get the ₹2,50,000 contract instead.
               </p>
             </div>
           </div>
@@ -129,66 +129,66 @@ export default function Home() {
       {/* Solution Section */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
-          <h3 className="text-4xl font-bold mb-12 text-center">How Freelancer's Buddy Helps</h3>
+          <h3 className="text-4xl font-bold mb-12 text-center">How Lance Buddy Protects You</h3>
           
           <div className="grid md:grid-cols-2 gap-8">
             {/* Contract Scanner */}
             <div className="p-8 bg-gradient-to-br from-blue-900/30 to-slate-900/30 border border-blue-500/30 rounded-lg hover:border-blue-400/50 transition">
               <div className="text-4xl mb-4">🔍</div>
-              <h4 className="text-2xl font-bold mb-3">Contract Scanner</h4>
+              <h4 className="text-2xl font-bold mb-3">Scan & Catch Traps</h4>
               <p className="text-slate-300 mb-4">
-                Upload any contract. Get instant risk analysis in 60 seconds.
+                Upload any contract. AI finds the clauses that will cost you money in 60 seconds.
               </p>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li>✅ Flags risky payment terms</li>
-                <li>✅ Identifies liability traps</li>
-                <li>✅ Catches scope creep clauses</li>
-                <li>✅ Highlights IP ownership issues</li>
+                <li>✅ Spots vague payment terms (before you get stuck waiting)</li>
+                <li>✅ Finds liability traps (before you owe ₹50,000+)</li>
+                <li>✅ Catches unlimited revision clauses (before 40 unpaid hours)</li>
+                <li>✅ Flags unfair IP ownership (before losing your code)</li>
               </ul>
             </div>
 
             {/* Proposal Scorer */}
             <div className="p-8 bg-gradient-to-br from-cyan-900/30 to-slate-900/30 border border-cyan-500/30 rounded-lg hover:border-cyan-400/50 transition">
               <div className="text-4xl mb-4">📊</div>
-              <h4 className="text-2xl font-bold mb-3">Proposal Scorer</h4>
+              <h4 className="text-2xl font-bold mb-3">Win More Proposals</h4>
               <p className="text-slate-300 mb-4">
-                Score your proposal before sending. Get a win probability rating.
+                Score your proposal before sending. Know your real win chances before wasting time.
               </p>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li>✅ Win probability percentage</li>
-                <li>✅ 8-factor breakdown analysis</li>
-                <li>✅ Actionable recommendations</li>
-                <li>✅ Improve your chances instantly</li>
+                <li>✅ Win probability % (stop sending weak proposals)</li>
+                <li>✅ 8-factor competitive analysis (see what's missing)</li>
+                <li>✅ Specific improvements to make (fix them before sending)</li>
+                <li>✅ Beat competitors with smarter proposals (win ₹2,50,000+ deals)</li>
               </ul>
             </div>
 
             {/* Document Generator */}
             <div className="p-8 bg-gradient-to-br from-purple-900/30 to-slate-900/30 border border-purple-500/30 rounded-lg hover:border-purple-400/50 transition">
               <div className="text-4xl mb-4">✍️</div>
-              <h4 className="text-2xl font-bold mb-3">Document Generator</h4>
+              <h4 className="text-2xl font-bold mb-3">Generate Safe Documents</h4>
               <p className="text-slate-300 mb-4">
-                Generate professional contracts, proposals, and invoices instantly.
+                Stop writing contracts from scratch. Generate fair, legally-sound documents in seconds.
               </p>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li>✅ Smart contract generation</li>
-                <li>✅ Professional proposal templates</li>
-                <li>✅ Auto-generated invoices</li>
-                <li>✅ Ready-to-send PDFs</li>
+                <li>✅ Freelancer-friendly contract templates (protect yourself first)</li>
+                <li>✅ Professional proposals that win (with built-in win factors)</li>
+                <li>✅ Invoices that get paid faster (set clear payment terms)</li>
+                <li>✅ All ready to send immediately (no delays)</li>
               </ul>
             </div>
 
             {/* Secure Storage */}
             <div className="p-8 bg-gradient-to-br from-green-900/30 to-slate-900/30 border border-green-500/30 rounded-lg hover:border-green-400/50 transition">
               <div className="text-4xl mb-4">💾</div>
-              <h4 className="text-2xl font-bold mb-3">Secure Storage</h4>
+              <h4 className="text-2xl font-bold mb-3">Organize & Protect</h4>
               <p className="text-slate-300 mb-4">
-                Keep all your documents safe and organized in one place.
+                Keep all contracts safe in one place. Find any contract in seconds when you need it.
               </p>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li>✅ End-to-end encryption</li>
-                <li>✅ Auto-delete after 3-10 days</li>
-                <li>✅ Quick access anytime</li>
-                <li>✅ Zero privacy concerns</li>
+                <li>✅ End-to-end encrypted (no one sees your contracts)</li>
+                <li>✅ Auto-delete after agreed days (your privacy, protected)</li>
+                <li>✅ Quick search & access (find contracts in seconds)</li>
+                <li>✅ Zero tracking (your data stays yours)</li>
               </ul>
             </div>
           </div>
@@ -198,17 +198,28 @@ export default function Home() {
       {/* ROI Section */}
       <section className="bg-slate-900/50 py-20 px-6 border-y border-slate-700/30">
         <div className="max-w-3xl mx-auto text-center">
-          <h3 className="text-3xl font-bold mb-8">Real ROI</h3>
+          <h3 className="text-3xl font-bold mb-8">One Caught Clause Pays for a Year</h3>
           
           <div className="p-8 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/30 rounded-lg">
-            <p className="text-xl text-slate-300 mb-6">
-              One caught risky clause = Tool pays for itself <span className="text-green-400 font-bold">10x over</span>
+            <p className="text-2xl text-slate-200 mb-8 font-semibold">
+              Real freelancers. Real money saved.
             </p>
             
-            <div className="space-y-4 text-slate-400">
-              <p>Vague payment terms caught → Get paid 60 days earlier → ₹1,644+ saved</p>
-              <p>Unlimited liability removed → Avoid ₹50,000+ liability → Priceless</p>
-              <p>Scope creep prevented → Save 10+ hours of work → ₹50,000+ saved</p>
+            <div className="space-y-5 text-slate-300">
+              <div className="text-left p-4 border-l-4 border-green-500">
+                <p className="font-bold text-lg">Caught: "Payment upon completion" → 90 days delayed</p>
+                <p className="text-green-400">You negotiate: Net 15 instead. Get paid ₹1,644 earlier ✓</p>
+              </div>
+              
+              <div className="text-left p-4 border-l-4 border-green-500">
+                <p className="font-bold text-lg">Caught: Unlimited liability clause</p>
+                <p className="text-green-400">You cap it at ₹50,000. Sleep without fear of ₹1,00,000+ lawsuits ✓</p>
+              </div>
+              
+              <div className="text-left p-4 border-l-4 border-green-500">
+                <p className="font-bold text-lg">Caught: "Unlimited revisions" → 40 unpaid hours</p>
+                <p className="text-green-400">You limit to 3 rounds. Save 10+ hours (₹50,000+) per project ✓</p>
+              </div>
             </div>
           </div>
         </div>
@@ -216,11 +227,11 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-slate-950 border-t border-slate-700/30 py-12 px-6 text-center text-slate-400">
-        <p className="mb-4">Freelancer's Buddy © 2026</p>
-        <p className="text-sm">Built by a freelancer. For freelancers.</p>
+        <p className="mb-4">Lance Buddy © 2026</p>
+        <p className="text-sm">AI Contract Protection for Freelancers</p>
         <p className="text-xs mt-4">
-          <a href="#" className="hover:text-slate-300">Privacy</a> • 
-          <a href="#" className="hover:text-slate-300"> Terms</a> • 
+          <a href="#" className="hover:text-slate-300">Privacy</a>
+          <a href="#" className="hover:text-slate-300"> Terms</a>
           <a href="#" className="hover:text-slate-300"> Contact</a>
         </p>
       </footer>
