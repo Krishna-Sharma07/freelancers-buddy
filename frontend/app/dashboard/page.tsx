@@ -176,8 +176,13 @@ export default function Dashboard() {
           user_metadata: currentUser.user_metadata as any,
         });
 
-        // Fetch credits from Supabase (or use mock data for now)
-        setCreditsRemaining(12);
+        const { data: creditData } = await supabase
+          .from('user_credits')
+          .select('credits')
+          .eq('user_id', currentUser.id)
+          .single();
+
+        setCreditsRemaining(creditData?.credits || 0);
       } catch (error) {
         console.error('Error fetching user:', error);
         router.push('/auth');

@@ -6,9 +6,9 @@ require('dotenv').config();
 
 const WebSocketService = require('./services/websocket');
 const pdfScanWorker = require('./workers/pdfScanWorker');
-const authRoutes = require('./routes/auth');
 const jobRoutes = require('./routes/jobs');
 const razorpayRoutes = require('./routes/razorpay');
+const scannerRoutes = require('./routes/scanner');
 const authMiddleware = require('./middleware/auth');
 
 const app = express();
@@ -42,9 +42,10 @@ app.get('/api/health', (req, res) => {
 
 // ============ ROUTES ============
 
-app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/razorpay', razorpayRoutes);
+app.use('/api/scanner', scannerRoutes);
+
 // Protected route example
 app.get('/api/protected', authMiddleware, (req, res) => {
   res.json({ 
