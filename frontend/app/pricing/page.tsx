@@ -1,10 +1,17 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import PaymentModal from '@/components/PaymentModal';
 
 export default function PricingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('pro');
+  const [userAuthenticated, setUserAuthenticated] = useState(false);
 
   const plans = [
     {
@@ -14,15 +21,15 @@ export default function PricingPage() {
       description: 'Perfect for trying it out',
       storage: '3 days',
       features: [
-        '3 credits (one-time)',
-        'Use for any service',
-        '3-day document storage',
-        '7-day scan/check results',
+        '3 free credits',
+        '1 contract scan',
+        '1 proposal check',
         'Basic risk report',
         'Email support',
       ],
       cta: 'Get Started',
       highlighted: false,
+      key: 'free',
     },
     {
       name: 'Standard',
@@ -41,6 +48,7 @@ export default function PricingPage() {
       ],
       cta: 'Buy Now',
       highlighted: false,
+      key: 'standard',
     },
     {
       name: 'Pro',
@@ -60,6 +68,7 @@ export default function PricingPage() {
       ],
       cta: 'Most Popular',
       highlighted: true,
+      key: 'pro',
     },
     {
       name: 'Professional',
@@ -80,8 +89,41 @@ export default function PricingPage() {
       ],
       cta: 'Buy Now',
       highlighted: false,
+      key: 'professional',
     },
   ];
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserAuthenticated(!!user);
+
+      // Check if coming from auth redirect
+      if (searchParams.get('redirect') === 'pricing' && user) {
+        setPaymentModalOpen(true);
+      }
+    };
+
+    checkAuth();
+  }, [searchParams]);
+
+  const handleBuyClick = (planKey: string) => {
+    setSelectedPlan(planKey);
+
+    if (!userAuthenticated) {
+      // Redirect to auth with callback
+      router.push(`/auth?redirect=pricing`);
+    } else {
+      // Open payment modal directly
+      setPaymentModalOpen(true);
+    }
+  };
+
+  const handlePaymentSuccess = (credits: number) => {
+    setPaymentModalOpen(false);
+    router.push(`/dashboard?payment=success&credits=${credits}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -108,6 +150,14 @@ export default function PricingPage() {
           </div>
         </div>
       </nav>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        onSuccess={handlePaymentSuccess}
+        selectedPlan={selectedPlan}
+      />
 
       {/* Hero Section */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
@@ -167,9 +217,12 @@ export default function PricingPage() {
 
               {/* CTA Button */}
               <button
-                onClick={() => router.push('/auth')}
+                onClick={() => handleBuyClick(plan.key)}
+                disabled={plan.credits === 3}
                 className={`w-full py-3 rounded-lg font-semibold mb-8 transition ${
-                  plan.highlighted
+                  plan.credits === 3
+                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                    : plan.highlighted
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/50'
                     : 'bg-slate-700 hover:bg-slate-600 text-white'
                 }`}
@@ -373,7 +426,7 @@ export default function PricingPage() {
           Start with 3 free credits. Scan a contract, check a proposal, or generate a document. No payment required.
         </p>
         <button
-          onClick={() => router.push('/auth')}
+          onClick={() => handleBuyClick('free')}
           className="px-10 py-4 text-lg bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg font-bold hover:shadow-lg hover:shadow-blue-500/50 transition"
         >
           Get Your Free 3 Credits

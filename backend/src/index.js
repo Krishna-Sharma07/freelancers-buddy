@@ -8,6 +8,7 @@ const WebSocketService = require('./services/websocket');
 const pdfScanWorker = require('./workers/pdfScanWorker');
 const authRoutes = require('./routes/auth');
 const jobRoutes = require('./routes/jobs');
+const razorpayRoutes = require('./routes/razorpay');
 const authMiddleware = require('./middleware/auth');
 
 const app = express();
@@ -43,7 +44,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
-
+app.use('/api/razorpay', razorpayRoutes);
 // Protected route example
 app.get('/api/protected', authMiddleware, (req, res) => {
   res.json({ 
@@ -65,7 +66,7 @@ app.use((err, req, res, next) => {
 // ============ START SERVER ============
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, 'localhost', () => {
   console.log(`\n🚀 Backend server running on http://localhost:${PORT}`);
   console.log(`📡 WebSocket server ready`);
   console.log(`⚙️ Job Queue (BullMQ) ready`);

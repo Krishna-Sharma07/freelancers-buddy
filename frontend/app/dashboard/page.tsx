@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import PaymentModal from '@/components/PaymentModal';
 
 interface User {
   email: string;
@@ -27,6 +28,8 @@ export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [creditsRemaining, setCreditsRemaining] = useState(0);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   
   // Week navigation
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
@@ -39,7 +42,7 @@ export default function Dashboard() {
     return weekStart;
   });
 
-  // Mock data with timestamps - IN PRODUCTION, THIS WILL COME FROM SUPABASE
+  // Mock scan data
   const generateMockScans = () => {
     const today = new Date();
     return [
@@ -157,6 +160,7 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch user and credits
   useEffect(() => {
     const getUser = async () => {
       try {
@@ -171,6 +175,9 @@ export default function Dashboard() {
           email: currentUser.email || '',
           user_metadata: currentUser.user_metadata as any,
         });
+
+        // Fetch credits from Supabase (or use mock data for now)
+        setCreditsRemaining(12);
       } catch (error) {
         console.error('Error fetching user:', error);
         router.push('/auth');
@@ -191,6 +198,19 @@ export default function Dashboard() {
     }
   };
 
+  const handlePaymentSuccess = (newCredits: number) => {
+    setCreditsRemaining(newCredits);
+  };
+
+  // Check for redirect with payment modal
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'true') {
+      setPaymentModalOpen(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -200,7 +220,6 @@ export default function Dashboard() {
   }
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-  const creditsRemaining = 12;
   const weekEndDate = getWeekEnd(selectedWeekStart);
   const weekRange = `${selectedWeekStart.toLocaleDateString()} - ${weekEndDate.toLocaleDateString()}`;
 
@@ -213,7 +232,17 @@ export default function Dashboard() {
             Lance Buddy
           </h1>
           <div className="flex items-center gap-6">
-            <span className="text-sm text-slate-400">Credits: <span className="text-cyan-400 font-semibold">{creditsRemaining}</span></span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400">Credits:</span>
+              <span className="text-lg text-cyan-400 font-semibold">{creditsRemaining}</span>
+              <button
+                onClick={() => setPaymentModalOpen(true)}
+                className="ml-2 w-8 h-8 bg-cyan-500/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/30 transition flex items-center justify-center text-cyan-300 font-bold"
+                title="Add credits"
+              >
+                +
+              </button>
+            </div>
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-sm bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition"
@@ -223,6 +252,13 @@ export default function Dashboard() {
           </div>
         </div>
       </nav>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        onSuccess={handlePaymentSuccess}
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -349,7 +385,6 @@ export default function Dashboard() {
         <div className="mb-12">
           <h3 className="text-2xl font-bold mb-6">Quick Access</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Contract Scanner */}
             <button
               onClick={() => router.push('/contract-scanner')}
               className="p-6 bg-gradient-to-br from-blue-900/40 to-slate-800/40 border border-blue-500/30 rounded-lg hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/20 transition text-left group"
@@ -359,7 +394,6 @@ export default function Dashboard() {
               <p className="text-sm text-slate-400">Scan & analyze contracts</p>
             </button>
 
-            {/* Proposal Checker */}
             <button
               onClick={() => router.push('/proposal-checker')}
               className="p-6 bg-gradient-to-br from-cyan-900/40 to-slate-800/40 border border-cyan-500/30 rounded-lg hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 transition text-left group"
@@ -369,7 +403,6 @@ export default function Dashboard() {
               <p className="text-sm text-slate-400">Score your proposals</p>
             </button>
 
-            {/* Document Generator */}
             <button
               onClick={() => router.push('/document-generator')}
               className="p-6 bg-gradient-to-br from-purple-900/40 to-slate-800/40 border border-purple-500/30 rounded-lg hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/20 transition text-left group"
@@ -379,7 +412,6 @@ export default function Dashboard() {
               <p className="text-sm text-slate-400">Generate documents</p>
             </button>
 
-            {/* Settings */}
             <button
               onClick={() => router.push('/settings')}
               className="p-6 bg-gradient-to-br from-emerald-900/40 to-slate-800/40 border border-emerald-500/30 rounded-lg hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 transition text-left group"
