@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
+
+// Dynamically import PdfViewer to avoid SSR issues with pdfjs-dist
+const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false });
 
 interface ProposalResult {
   id: string;
@@ -14,6 +18,7 @@ interface ProposalResult {
     severity: 'high' | 'medium' | 'low';
     description: string;
     impact: string;
+    pageNumber: number;
   }>;
   recommendations: Array<{
     segment: string;
@@ -26,40 +31,52 @@ interface ProposalResult {
 
 export default function ProposalChecker() {
   const router = useRouter();
-  
+
   // Upload form state
   const [file, setFile] = useState<File | null>(null);
   const [projectDescription, setProjectDescription] = useState('');
-  const [fileData, setFileData] = useState<string | null>(null);
+  const [pdfArrayBuffer, setPdfArrayBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ProposalResult | null>(null);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState(0);
-  
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // PDF viewer state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [highlightedPage, setHighlightedPage] = useState<number | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch real credits from database
   useEffect(() => {
     const fetchCredits = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
           const { data: creditData } = await supabase
             .from('user_credits')
             .select('credits')
             .eq('user_id', user.id)
             .single();
-          
           setCreditsRemaining(creditData?.credits || 0);
         }
       } catch (error) {
         console.error('Error fetching credits:', error);
       }
     };
-
     fetchCredits();
+  }, []);
+
+  // Cleanup highlight timer
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
   }, []);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -76,7 +93,6 @@ export default function ProposalChecker() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles && droppedFiles[0]) {
       if (droppedFiles[0].type === 'application/pdf') {
@@ -104,7 +120,6 @@ export default function ProposalChecker() {
       setError('Please select a proposal PDF');
       return;
     }
-
     if (!projectDescription.trim()) {
       setError('Please describe the project to score your proposal accurately');
       return;
@@ -112,20 +127,23 @@ export default function ProposalChecker() {
 
     setLoading(true);
     setError('');
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         router.push('/auth');
         return;
       }
 
+      // Read file as ArrayBuffer for react-pdf AND as base64 for the API
+      // Clone the ArrayBuffer because pdfjs transfers it to a Web Worker,
+      // which detaches it in the main thread.
+      const arrayBuffer = await file.arrayBuffer();
+      const clonedArrayBuffer = arrayBuffer.slice(0);
+      setPdfArrayBuffer(clonedArrayBuffer);
+
       const reader = new FileReader();
       reader.onload = async (e) => {
         const base64 = (e.target?.result as string)?.split(',')[1];
-        const pdfUrl = URL.createObjectURL(file);
-
         try {
           const response = await fetch('/api/proposal/check', {
             method: 'POST',
@@ -154,11 +172,8 @@ export default function ProposalChecker() {
             timestamp: new Date(),
           });
 
-          // Store PDF data for viewer
-          setFileData(pdfUrl);
-
           // Update credits
-          setCreditsRemaining(creditsRemaining - 1);
+          setCreditsRemaining((prev) => prev - 1);
           setFile(null);
           setProjectDescription('');
         } catch (err) {
@@ -167,12 +182,26 @@ export default function ProposalChecker() {
           setLoading(false);
         }
       };
-
       reader.readAsDataURL(file);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  // Handle clicking on a weak segment card to jump to that page in the PDF
+  const handleWeakSegmentCardClick = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    setHighlightedPage(pageNumber);
+
+    // Scroll to the PDF viewer container
+    if (pdfViewerRef.current) {
+      pdfViewerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Remove highlight after 2 seconds
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedPage(null), 2000);
   };
 
   // Get color based on conversion probability
@@ -211,7 +240,6 @@ export default function ProposalChecker() {
               Lance Buddy
             </h1>
           </Link>
-          
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="text-slate-400 hover:text-white transition">
               ← Back to Dashboard
@@ -263,7 +291,6 @@ export default function ProposalChecker() {
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  
                   {file ? (
                     <div>
                       <div className="text-6xl mb-4">📄</div>
@@ -308,9 +335,8 @@ export default function ProposalChecker() {
                     - Design, technical, or platform preferences<br></br>
                     - Deliverables and success criteria<br></br>
                     - Timeline, budget, and constraints (if applicable)<br></br><br></br>
-
                     The more context you provide, the better we can score the proposal.
-                    </p>
+                  </p>
                   <textarea
                     value={projectDescription}
                     onChange={(e) => setProjectDescription(e.target.value)}
@@ -343,30 +369,12 @@ export default function ProposalChecker() {
                 <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-6 mb-6">
                   <h3 className="text-lg font-bold mb-4">✅ What We Score</h3>
                   <ul className="space-y-3 text-sm text-slate-300">
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Conversion probability %</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Weak segments & risks</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Pricing positioning</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Value clarity</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Call-to-action strength</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Specific improvements</span>
-                    </li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Conversion probability %</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Weak segments & risks</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Pricing positioning</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Value clarity</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Call-to-action strength</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Specific improvements</span></li>
                   </ul>
                 </div>
 
@@ -423,26 +431,11 @@ export default function ProposalChecker() {
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
                   <h3 className="text-lg font-bold mb-4">🚨 Common Weak Points</h3>
                   <ul className="space-y-2 text-xs text-slate-300">
-                    <li className="flex gap-2">
-                      <span className="text-red-400">•</span>
-                      <span>Vague deliverables or timeline</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-red-400">•</span>
-                      <span>Price doesn't match scope</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-red-400">•</span>
-                      <span>No clear next steps/CTA</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-red-400">•</span>
-                      <span>Missing project requirements</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-red-400">•</span>
-                      <span>Weak value proposition</span>
-                    </li>
+                    <li className="flex gap-2"><span className="text-red-400">•</span><span>Vague deliverables or timeline</span></li>
+                    <li className="flex gap-2"><span className="text-red-400">•</span><span>Price doesn't match scope</span></li>
+                    <li className="flex gap-2"><span className="text-red-400">•</span><span>No clear next steps/CTA</span></li>
+                    <li className="flex gap-2"><span className="text-red-400">•</span><span>Missing project requirements</span></li>
+                    <li className="flex gap-2"><span className="text-red-400">•</span><span>Weak value proposition</span></li>
                   </ul>
                 </div>
               </div>
@@ -518,9 +511,8 @@ export default function ProposalChecker() {
                       </div>
                     </div>
                   </div>
-
                   <p className="text-slate-300">
-                    {result.conversionProbability >= 70 
+                    {result.conversionProbability >= 70
                       ? "Your proposal is well-positioned to win. The pricing, value, and positioning are strong. Minor tweaks could boost it even higher."
                       : result.conversionProbability >= 50
                       ? "Your proposal has potential but has some weak spots. Check the segments below and apply the recommendations before sending."
@@ -542,7 +534,8 @@ export default function ProposalChecker() {
                       {result.weakSegments.map((segment, idx) => (
                         <div
                           key={idx}
-                          className={`p-6 rounded-lg border ${getSeverityColor(segment.severity)}`}
+                          onClick={() => handleWeakSegmentCardClick(segment.pageNumber)}
+                          className={`p-6 rounded-lg border cursor-pointer transition hover:shadow-lg ${getSeverityColor(segment.severity)}`}
                         >
                           <div className="flex items-start gap-4">
                             <div className={`text-2xl flex-shrink-0 ${
@@ -556,6 +549,7 @@ export default function ProposalChecker() {
                               <p className="text-xs opacity-80">
                                 <strong>Impact:</strong> {segment.impact}
                               </p>
+                              <p className="text-xs text-slate-400 mt-2">Click to view on page {segment.pageNumber}</p>
                             </div>
                           </div>
                         </div>
@@ -585,31 +579,17 @@ export default function ProposalChecker() {
                 )}
               </div>
 
-              {/* Right Column - PDF Viewer using embed */}
-              <div>
-                <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg overflow-hidden sticky top-24">
-                  <div className="bg-slate-900 p-4 border-b border-slate-700/30">
-                    <h3 className="font-bold">📄 Proposal Preview</h3>
-                  </div>
-                  
-                  {fileData && (
-                    <div style={{ height: '800px' }}>
-                      <embed
-                        src={fileData}
-                        type="application/pdf"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 'none' }}
-                      />
-                    </div>
-                  )}
-
-                  {!fileData && (
-                    <div className="h-96 flex items-center justify-center bg-slate-950 text-slate-400">
-                      Loading PDF preview...
-                    </div>
-                  )}
-                </div>
+              {/* Right Column - PDF Viewer */}
+              <div ref={pdfViewerRef}>
+                {pdfArrayBuffer && (
+                  <PdfViewer
+                    pdfArrayBuffer={pdfArrayBuffer}
+                    currentPage={currentPage}
+                    highlightedPage={highlightedPage}
+                    onPageChange={setCurrentPage}
+                    title="📄 Proposal Preview"
+                  />
+                )}
               </div>
             </div>
 
@@ -619,7 +599,9 @@ export default function ProposalChecker() {
                 onClick={() => {
                   setResult(null);
                   setFile(null);
-                  setFileData(null);
+                  setPdfArrayBuffer(null);
+                  setCurrentPage(1);
+                  setHighlightedPage(null);
                   setProjectDescription('');
                 }}
                 className="py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition text-lg"

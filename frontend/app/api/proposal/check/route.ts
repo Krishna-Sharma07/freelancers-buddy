@@ -14,6 +14,7 @@ interface ProposalAnalysisResponse {
     severity: 'high' | 'medium' | 'low';
     description: string;
     impact: string;
+    pageNumber: number;
   }>;
   recommendations: Array<{
     segment: string;
@@ -22,7 +23,7 @@ interface ProposalAnalysisResponse {
   }>;
 }
 
-// Mock analysis function - Returns sample data
+// Mock analysis function - Returns sample data with pageNumber
 // Replace this with real Claude API call on July 8+
 function generateMockAnalysis(projectDescription: string): ProposalAnalysisResponse {
   // Generate different scores based on proposal length/quality indicators
@@ -39,19 +40,22 @@ function generateMockAnalysis(projectDescription: string): ProposalAnalysisRespo
         title: 'Vague Deliverables',
         severity: 'high',
         description: 'The proposal doesn\'t specify exact deliverables or what "success" looks like',
-        impact: 'Client unsure of what they\'re paying for - high risk of scope creep'
+        impact: 'Client unsure of what they\'re paying for - high risk of scope creep',
+        pageNumber: 1
       },
       {
         title: 'Missing Timeline Milestones',
         severity: 'medium',
         description: 'No phase breakdown or intermediate milestones mentioned',
-        impact: 'Client worried about delays; no way to track progress'
+        impact: 'Client worried about delays; no way to track progress',
+        pageNumber: 2
       },
       {
         title: 'Weak Value Positioning',
         severity: 'medium',
         description: 'Proposal focuses on features, not client benefits or outcomes',
-        impact: 'Fails to answer "why should they choose you?" - competitive disadvantage'
+        impact: 'Fails to answer "why should they choose you?" - competitive disadvantage',
+        pageNumber: 3
       }
     ],
     recommendations: [

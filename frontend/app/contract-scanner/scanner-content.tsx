@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
+
+// Dynamically import PdfViewer to avoid SSR issues with pdfjs-dist
+const PdfViewer = dynamic(() => import('@/components/PdfViewer'), { ssr: false });
 
 interface ScanResult {
   id: string;
@@ -15,6 +19,7 @@ interface ScanResult {
     title: string;
     severity: 'high' | 'medium' | 'low';
     description: string;
+    pageNumber: number;
   }>;
   timestamp: Date;
 }
@@ -22,35 +27,48 @@ interface ScanResult {
 export default function ContractScanner() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [fileData, setFileData] = useState<string | null>(null); // Store PDF data for viewer
+  const [pdfArrayBuffer, setPdfArrayBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState(0);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // PDF viewer state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [highlightedPage, setHighlightedPage] = useState<number | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch real credits from database
   useEffect(() => {
     const fetchCredits = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
           const { data: creditData } = await supabase
             .from('user_credits')
             .select('credits')
             .eq('user_id', user.id)
             .single();
-          
           setCreditsRemaining(creditData?.credits || 0);
         }
       } catch (error) {
         console.error('Error fetching credits:', error);
       }
     };
-
     fetchCredits();
+  }, []);
+
+  // Cleanup highlight timer
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
   }, []);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -67,7 +85,6 @@ export default function ContractScanner() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles && droppedFiles[0]) {
       if (droppedFiles[0].type === 'application/pdf') {
@@ -95,23 +112,24 @@ export default function ContractScanner() {
       setError('Please select a file');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         router.push('/auth');
         return;
       }
+      // Read file as ArrayBuffer for react-pdf AND as base64 for the API
+      // Clone the ArrayBuffer because pdfjs transfers it to a Web Worker,
+      // which detaches it in the main thread.
+      const arrayBuffer = await file.arrayBuffer();
+      const clonedArrayBuffer = arrayBuffer.slice(0);
+      setPdfArrayBuffer(clonedArrayBuffer);
 
       const reader = new FileReader();
       reader.onload = async (e) => {
         const base64 = (e.target?.result as string)?.split(',')[1];
-        const pdfUrl = URL.createObjectURL(file);
-
         try {
           const response = await fetch('/api/scanner/scan', {
             method: 'POST',
@@ -122,12 +140,10 @@ export default function ContractScanner() {
               userId: user.id,
             }),
           });
-
           if (!response.ok) {
             const data = await response.json();
             throw new Error(data.error || 'Scan failed');
           }
-
           const scanResult = await response.json();
           setResult({
             id: scanResult.id,
@@ -138,12 +154,7 @@ export default function ContractScanner() {
             risks: scanResult.risks,
             timestamp: new Date(),
           });
-
-          // Store PDF data for viewer
-          setFileData(pdfUrl);
-
-          // Update credits
-          setCreditsRemaining(creditsRemaining - 1);
+          setCreditsRemaining((prev) => prev - 1);
           setFile(null);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Scan failed');
@@ -151,12 +162,26 @@ export default function ContractScanner() {
           setLoading(false);
         }
       };
-
       reader.readAsDataURL(file);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  // Handle clicking on a risk card to jump to that page in the PDF
+  const handleRiskCardClick = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    setHighlightedPage(pageNumber);
+
+    // Scroll to the PDF viewer container
+    if (pdfViewerRef.current) {
+      pdfViewerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Remove highlight after 2 seconds
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedPage(null), 2000);
   };
 
   return (
@@ -169,7 +194,6 @@ export default function ContractScanner() {
               Lance Buddy
             </h1>
           </Link>
-          
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="text-slate-400 hover:text-white transition">
               ← Back to Dashboard
@@ -202,7 +226,6 @@ export default function ContractScanner() {
             <div className="grid md:grid-cols-3 gap-8 mb-12">
               {/* Upload Section */}
               <div className="md:col-span-2">
-                {/* Upload Area */}
                 <div
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -221,7 +244,6 @@ export default function ContractScanner() {
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  
                   {file ? (
                     <div>
                       <div className="text-6xl mb-4">📄</div>
@@ -271,46 +293,23 @@ export default function ContractScanner() {
 
               {/* Info Section */}
               <div>
-                {/* What We Check */}
                 <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-6 mb-6">
                   <h3 className="text-lg font-bold mb-4">✅ What We Analyze</h3>
                   <ul className="space-y-3 text-sm text-slate-300">
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Liability clauses</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>IP rights & ownership</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Payment terms</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Termination clauses</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Confidentiality terms</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-cyan-400 flex-shrink-0">→</span>
-                      <span>Dispute resolution</span>
-                    </li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Liability clauses</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>IP rights & ownership</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Payment terms</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Termination clauses</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Confidentiality terms</span></li>
+                    <li className="flex gap-3"><span className="text-cyan-400 flex-shrink-0">→</span><span>Dispute resolution</span></li>
                   </ul>
                 </div>
-
-                {/* Tips */}
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6">
                   <h3 className="text-lg font-bold mb-4">💡 Pro Tip</h3>
                   <p className="text-sm text-slate-300 mb-4">
                     Our AI identifies red flags and risks. Always have a lawyer review important contracts before signing.
                   </p>
-                  <p className="text-xs text-slate-400">
-                    Results are stored for 7 days.
-                  </p>
+                  <p className="text-xs text-slate-400">Results are stored for 7 days.</p>
                 </div>
               </div>
             </div>
@@ -395,7 +394,6 @@ export default function ContractScanner() {
                       </div>
                     </div>
                   </div>
-
                   <p className="text-slate-300">{result.summary}</p>
                 </div>
 
@@ -407,6 +405,7 @@ export default function ContractScanner() {
                       {result.risks.map((risk, idx) => (
                         <div
                           key={idx}
+                          onClick={() => handleRiskCardClick(risk.pageNumber)}
                           className={`p-6 rounded-lg border cursor-pointer transition hover:shadow-lg ${
                             risk.severity === 'high'
                               ? 'bg-red-500/10 border-red-500/30 hover:shadow-red-500/20'
@@ -424,6 +423,7 @@ export default function ContractScanner() {
                             <div className="flex-1">
                               <h4 className="font-bold mb-2 text-lg">{risk.title}</h4>
                               <p className="text-slate-300 text-sm">{risk.description}</p>
+                              <p className="text-xs text-slate-400 mt-2">Click to view on page {risk.pageNumber}</p>
                             </div>
                           </div>
                         </div>
@@ -436,47 +436,24 @@ export default function ContractScanner() {
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-8">
                   <h3 className="text-2xl font-bold mb-4">💼 Recommendations</h3>
                   <ul className="space-y-3 text-slate-300">
-                    <li className="flex gap-3">
-                      <span className="text-blue-400 flex-shrink-0">✓</span>
-                      <span>Review all identified risks with a legal professional</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-blue-400 flex-shrink-0">✓</span>
-                      <span>Negotiate unfavorable terms before signing</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="text-blue-400 flex-shrink-0">✓</span>
-                      <span>Keep a copy of the signed contract for your records</span>
-                    </li>
+                    <li className="flex gap-3"><span className="text-blue-400 flex-shrink-0">✓</span><span>Review all identified risks with a legal professional</span></li>
+                    <li className="flex gap-3"><span className="text-blue-400 flex-shrink-0">✓</span><span>Negotiate unfavorable terms before signing</span></li>
+                    <li className="flex gap-3"><span className="text-blue-400 flex-shrink-0">✓</span><span>Keep a copy of the signed contract for your records</span></li>
                   </ul>
                 </div>
               </div>
 
-              {/* Right Column - PDF Viewer using embed */}
-              <div>
-                <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg overflow-hidden sticky top-24">
-                  <div className="bg-slate-900 p-4 border-b border-slate-700/30">
-                    <h3 className="font-bold">📄 Document Preview</h3>
-                  </div>
-                  
-                  {fileData && (
-                    <div style={{ height: '800px' }}>
-                      <embed
-                        src={fileData}
-                        type="application/pdf"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 'none' }}
-                      />
-                    </div>
-                  )}
-
-                  {!fileData && (
-                    <div className="h-96 flex items-center justify-center bg-slate-950 text-slate-400">
-                      Loading PDF preview...
-                    </div>
-                  )}
-                </div>
+              {/* Right Column - PDF Viewer */}
+              <div ref={pdfViewerRef}>
+                {pdfArrayBuffer && (
+                  <PdfViewer
+                    pdfArrayBuffer={pdfArrayBuffer}
+                    currentPage={currentPage}
+                    highlightedPage={highlightedPage}
+                    onPageChange={setCurrentPage}
+                    title="📄 Document Preview"
+                  />
+                )}
               </div>
             </div>
 
@@ -486,7 +463,9 @@ export default function ContractScanner() {
                 onClick={() => {
                   setResult(null);
                   setFile(null);
-                  setFileData(null);
+                  setPdfArrayBuffer(null);
+                  setCurrentPage(1);
+                  setHighlightedPage(null);
                 }}
                 className="py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition text-lg"
               >
