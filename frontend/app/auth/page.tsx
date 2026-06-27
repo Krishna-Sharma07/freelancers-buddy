@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 export default function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get('ref'); // Get referral code from URL
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +19,46 @@ export default function AuthPage() {
   const [success, setSuccess] = useState('');
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [referralMessage, setReferralMessage] = useState(''); // Referral banner message
+
+  // Detect referral code from URL
+  useEffect(() => {
+    if (referralCode) {
+      setIsSignUp(true); // Force signup mode if referred
+      setReferralMessage(`You've been referred! Sign up and get exclusive benefits.`);
+    }
+  }, [referralCode]);
+
+  // Track referral after successful signup
+  const trackReferralAfterSignup = async (token: string) => {
+    if (!referralCode) return; // No referral code, skip
+
+    try {
+      const response = await fetch('/api/referrals/track-signup', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          referral_code: referralCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Referral tracked:', data.message);
+        setSuccess(`${success} ${data.message}`);
+      } else {
+        console.warn('⚠️ Referral tracking failed:', data.error);
+        // Don't block signup if referral fails
+      }
+    } catch (error) {
+      console.error('Error tracking referral:', error);
+      // Don't block signup if referral fails
+    }
+  };
 
   const handleEmailAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +86,13 @@ export default function AuthPage() {
           setError(data.error || 'Signup failed');
           setLoading(false);
           return;
+        }
+
+        const signupData = await response.json();
+
+        // Track referral if code is present and user is authenticated
+        if (referralCode && signupData.session?.access_token) {
+          await trackReferralAfterSignup(signupData.session.access_token);
         }
 
         // Show pending verification state
@@ -192,6 +243,15 @@ export default function AuthPage() {
       {/* Auth Container */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
+          {/* Referral Banner */}
+          {referralCode && (
+            <div className="mb-6 p-4 bg-cyan-500/20 border border-cyan-500/30 rounded-lg">
+              <p className="text-cyan-300 text-sm font-semibold text-center">
+                🎉 {referralMessage}
+              </p>
+            </div>
+          )}
+
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-4xl font-bold mb-2">
